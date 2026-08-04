@@ -10,7 +10,29 @@ export interface FaceitPlayer {
   team: string | null;
   /** Aim Rating from Leetify (populated progressively after roster loads). */
   aim?: AimRatingState;
+  /** Aggregated match stats from Leetify (last 30 matches). */
+  matchStats?: MatchStatsState;
 }
+
+/** Aggregated stats from recent Leetify matches. */
+export interface MatchStats {
+  matchesAnalyzed: number;
+  totalMatches: number;
+  winRate: number | null;
+  kdRatio: number | null;
+  killsPerRound: number | null;
+  adr: number | null;
+  kills: number | null;
+  deaths: number | null;
+  assists: number | null;
+  leetifyProfileUrl: string | null;
+}
+
+export type MatchStatsState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "available"; stats: MatchStats }
+  | { status: "unavailable" };
 
 /** Leetify Aim Rating state per player. */
 export type AimRatingState =

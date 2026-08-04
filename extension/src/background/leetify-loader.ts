@@ -1,11 +1,11 @@
 /**
  * Leetify background loader.
  *
- * Fetches Aim Ratings for all players in a roster with controlled concurrency.
- * Updates the state progressively as each profile loads.
+ * Fetches Aim Ratings + Match Stats for all players in a roster
+ * with controlled concurrency. Updates the state progressively.
  */
 
-import { fetchLeetifyProfile } from "@fve/core";
+import { fetchLeetifyProfile, fetchPlayerStats } from "@fve/core";
 import type {
   FaceitPlayer,
   AimRatingState,
@@ -54,7 +54,8 @@ function toAimState(
 export async function loadAimRatings(
   /** All players from both factions (10 elements). */
   players: FaceitPlayer[],
-  apiKey: string,
+  leetifyKey: string,
+  faceitKey: string,
   /** Called after each player's aim is resolved. Receives the updated player. */
   onUpdate: (player: FaceitPlayer) => void,
   /** Optional abort signal for cancelling the entire batch (new match). */
@@ -102,7 +103,7 @@ export async function loadAimRatings(
       try {
         const result = await fetchLeetifyProfile(
           player.steamId64,
-          apiKey,
+          leetifyKey,
           TIMEOUT_MS,
           signal,
         );
@@ -118,6 +119,40 @@ export async function loadAimRatings(
         }
 
         onUpdate(player);
+
+        // Fetch FACEIT match stats for players with valid playerId.
+        if (player.playerId) {
+          try {
+            const stats = await fetchPlayerStats(
+              player.playerId,
+              faceitKey,
+              TIMEOUT_MS,
+              signal,
+            );
+            if (stats) {
+              player.matchStats = {
+                status: "available",
+                stats: {
+                  matchesAnalyzed: stats.matches ?? 0,
+                  totalMatches: stats.matches ?? 0,
+                  winRate: stats.winRate !== null ? stats.winRate / 100 : null,
+                  kdRatio: stats.kdRatio,
+                  killsPerRound: stats.krRatio,
+                  adr: stats.adr,
+                  kills: stats.avgKills,
+                  deaths: stats.avgDeaths,
+                  assists: stats.avgAssists,
+                  leetifyProfileUrl: null,
+                },
+              };
+            } else {
+              player.matchStats = { status: "unavailable" };
+            }
+          } catch {
+            player.matchStats = { status: "unavailable" };
+          }
+          onUpdate(player);
+        }
       } catch {
         player.aim = {
           status: "error",

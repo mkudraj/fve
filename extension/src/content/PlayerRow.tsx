@@ -132,6 +132,38 @@ export const PlayerRow: React.FC<PlayerRowProps> = ({
             FACEIT ID: <span style={{ color: "#ccc" }}>{player.playerId}</span>
           </div>
         )}
+        {player.matchStats?.status === "loading" && (
+          <div style={{ color: "#666" }}>Match stats: loading...</div>
+        )}
+        {player.matchStats?.status === "available" && (
+          <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #333" }}>
+            <div>
+              Last {player.matchStats.stats.matchesAnalyzed} matches
+              {" · "}
+              {player.matchStats.stats.totalMatches} total
+            </div>
+            {player.matchStats.stats.winRate != null && (
+              <div>
+                Win rate: <span style={{ color: "#ccc" }}>{(player.matchStats.stats.winRate * 100).toFixed(0)}%</span>
+              </div>
+            )}
+            {player.matchStats.stats.kdRatio != null && (
+              <div>
+                K/D: <span style={{ color: "#ccc" }}>{player.matchStats.stats.kdRatio.toFixed(2)}</span>
+                {" · "}K/R: <span style={{ color: "#ccc" }}>{player.matchStats.stats.killsPerRound?.toFixed(2)}</span>
+                {" · "}ADR: <span style={{ color: "#ccc" }}>{player.matchStats.stats.adr?.toFixed(1)}</span>
+              </div>
+            )}
+            {player.matchStats.stats.kills != null && (
+              <div>
+                K/D/A:{" "}
+                <span style={{ color: "#ccc" }}>
+                  {player.matchStats.stats.kills}/{player.matchStats.stats.deaths}/{player.matchStats.stats.assists}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {player.anticheatRequired && (
           <div style={{ color: "#4caf50" }}>AC required</div>
         )}

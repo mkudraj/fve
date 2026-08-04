@@ -127,7 +127,7 @@ async function onMatchDetected(matchId: string): Promise<void> {
     options.enableAimRating &&
     options.leetifyApiKey
   ) {
-    fetchAimRatings(state.matchId, options.leetifyApiKey);
+    fetchAimRatings(state.matchId, options.leetifyApiKey, options.faceitApiKey);
   }
 }
 
@@ -137,7 +137,8 @@ async function onMatchDetected(matchId: string): Promise<void> {
  */
 async function fetchAimRatings(
   matchId: string,
-  apiKey: string,
+  leetifyKey: string,
+  faceitKey: string,
 ): Promise<void> {
   const state = getState();
   if (state.status !== "ready") return;
@@ -148,7 +149,8 @@ async function fetchAimRatings(
 
   const timing = await loadAimRatings(
     allPlayers,
-    apiKey,
+    leetifyKey,
+    faceitKey,
     (updatedPlayer) => {
       // Guard: only broadcast if still on the same match.
       const current = getState();
