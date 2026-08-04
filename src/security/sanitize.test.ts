@@ -8,6 +8,8 @@ import {
   sanitizeUrl,
   sanitizeResponseBody,
   sanitizeWebSocketFrame,
+  sanitizePostData,
+  sanitizeStorageData,
 } from "./sanitize.js";
 
 test("sanitizeHeaders - masks Authorization header", () => {
@@ -73,4 +75,33 @@ test("sanitizeWebSocketFrame - masks tokens in frame data", () => {
 test("sanitizeWebSocketFrame - handles empty frames", () => {
   const result = sanitizeWebSocketFrame("");
   assert.strictEqual(result, "");
+});
+
+test("sanitizePostData - masks secrets in JSON and plain text", () => {
+  const json = sanitizePostData(
+    JSON.stringify({ access_token: "tok_xyz", match_id: "m1", password: "hunter2" }),
+  );
+  assert.ok(!json.includes("tok_xyz"), "access_token masked");
+  assert.ok(!json.includes("hunter2"), "password masked");
+  assert.ok(json.includes("m1"), "match_id preserved");
+
+  const plain = sanitizePostData("token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature");
+  assert.ok(!plain.includes("eyJhbGci"), "JWT masked in plain text");
+});
+
+test("sanitizeStorageData - masks sensitive keys and nested tokens", () => {
+  const clean = sanitizeStorageData({
+    session_token: "tok_session",
+    auth: JSON.stringify({ refresh: "rtok" }),
+    user: JSON.stringify({ nickname: "TestUser", player_id: "p1", access_token: "tok_xyz" }),
+    match_id: "m-1",
+    config: "plain value",
+  });
+  assert.strictEqual(clean.session_token, "[REDACTED]", "session_token masked");
+  assert.ok(!clean.auth.includes("rtok"), "nested refresh masked");
+  assert.ok(!clean.user.includes("tok_xyz"), "nested access_token masked");
+  assert.ok(clean.user.includes("TestUser"), "nickname preserved");
+  assert.ok(clean.user.includes("p1"), "player_id preserved");
+  assert.strictEqual(clean.match_id, "m-1", "match_id preserved");
+  assert.strictEqual(clean.config, "plain value", "non-sensitive preserved");
 });

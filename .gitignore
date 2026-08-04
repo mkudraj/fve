@@ -4,3 +4,5 @@ output/*
 !output/.gitkeep
 *.log
 .DS_Store
+.env
+.env.local

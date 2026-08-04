@@ -6,19 +6,20 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node --loader ts-node/esm src/index.ts",
-    "capture": "node --loader ts-node/esm src/index.ts --capture",
-    "analyze": "node --loader ts-node/esm scripts/analyze.ts",
-    "report": "node --loader ts-node/esm scripts/analyze.ts --report-only",
+    "start": "npm run build && node dist/src/index.js",
+    "capture": "npm run build && node dist/src/index.js --capture",
+    "analyze": "npm run build && node dist/scripts/analyze.js",
+    "report": "npm run build && node dist/scripts/analyze.js --report-only",
     "typecheck": "tsc --noEmit",
-    "test": "node --loader ts-node/esm --test src/**/*.test.ts"
+    "test": "npm run build && node --test \"dist/src/**/*.test.js\""
   },
   "dependencies": {
-    "chrome-remote-interface": "^0.33.0"
+    "chrome-remote-interface": "^0.33.0",
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@types/chrome-remote-interface": "^0.34.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.20.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
   }

@@ -12,6 +12,7 @@ import type {
 import { classifyHits, findPreRevealHits, summarizeClassification } from "./classify-events.js";
 import { buildTimeline } from "./timeline.js";
 import { getMatchIds } from "./extract-identifiers.js";
+import { analyzeRosterFromJson } from "./roster.js";
 
 export function generateReport(
   report: SessionReport,
@@ -204,6 +205,51 @@ function generateFindings(report: SessionReport): Finding[] {
   ];
 }
 
+function buildInvestigationTable(report: SessionReport): string {
+  const rows: string[] = [];
+  rows.push("| Źródło | Faza | HTTP status | Match ID | Liczba graczy | Nickname'i | Player IDs | Steam IDs |");
+  rows.push("|---|---|---|---|---|---|---|---|");
+
+  const byPhase: Record<string, { status: number; body: string | null; ts: string }> = {};
+  for (const r of report.dataApi) {
+    byPhase[r.phase] = { status: r.httpStatus, body: r.sanitizedBody, ts: r.responseTimestamp };
+  }
+  for (const i of report.internal) {
+    byPhase[`internal_${i.phase}`] = { status: 0, body: i.sanitizedBody, ts: i.timestamp };
+  }
+
+  const analyze = (body: string | null, ts: string) => {
+    if (!body) return { count: 0, nicks: "—", pids: "—", steams: "—" };
+    try {
+      const parsed = analyzeRosterFromJson(body, ts);
+      const players = parsed.players;
+      return {
+        count: players.length,
+        nicks: players.map((p) => p.nickname ?? "?").join(", "),
+        pids: players.map((p) => p.playerId ?? "?").join(", "),
+        steams: players.map((p) => p.steamId64 ?? "?").join(", "),
+      };
+    } catch {
+      return { count: 0, nicks: "—", pids: "—", steams: "—" };
+    }
+  };
+
+  const order: Array<[string, string]> = [
+    ["pre_accept", "Data API / pre-accept"],
+    ["post_accept_immediate", "Data API / post-accept immediate"],
+    ["post_accept_delayed", "Data API / post-accept delayed"],
+    ["internal_pre_accept", "Internal / pre-accept"],
+    ["internal_post_accept", "Internal / post-accept"],
+  ];
+  for (const [key, label] of order) {
+    const rec = byPhase[key];
+    if (!rec) continue;
+    const a = analyze(rec.body, rec.ts);
+    rows.push(`| ${label} | ${key} | ${rec.status || "n/a"} | ${report.matchId ?? "—"} | ${a.count} | ${a.nicks.substring(0, 120)} | ${a.pids.substring(0, 120)} | ${a.steams.substring(0, 120)} |`);
+  }
+  return rows.join("\n");
+}
+
 function generateMarkdownReport(report: SessionReport): string {
   const s = report.summary;
   let md = "";
@@ -237,6 +283,17 @@ function generateMarkdownReport(report: SessionReport): string {
 
   md += `\n## Recommendation\n\n`;
   md += `${s.recommendation}\n\n`;
+
+  md += `## Investigation (Data API vs Internal, pre/post Accept)\n\n`;
+  if (report.dataApi.length === 0 && report.internal.length === 0) {
+    md += `_Brak danych z dochodzenia — nie wykryto matchId ani nie wykonano żądań API._\n\n`;
+  } else {
+    md += `${buildInvestigationTable(report)}\n\n`;
+  }
+
+  md += `## Answer & Verdict\n\n`;
+  md += `**Answer:** ${report.answer ?? "—"}\n\n`;
+  md += `**Verdict:** ${report.verdict ?? "—"}\n\n`;
 
   md += `## Pre-reveal hits (top 20)\n\n`;
   const preHits = report.hits.filter((h) => h.phase === "pre-reveal").slice(0, 20);

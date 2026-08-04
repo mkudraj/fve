@@ -21,6 +21,8 @@ const SENSITIVE_PARAMS = new Set([
   "apikey",
   "session_id",
   "sessionid",
+  "session_token",
+  "sessiontoken",
   "sid",
   "jwt",
   "bearer",
@@ -76,14 +78,60 @@ export function sanitizeUrl(url: string): string {
 
 export function sanitizeResponseBody(body: string): string {
   if (!body) return body;
+  return sanitizeText(body);
+}
 
+export function sanitizePostData(body: string): string {
+  if (!body) return body;
+  return sanitizeText(body);
+}
+
+export function sanitizeStorageData(
+  data: Record<string, string>,
+): Record<string, string> {
+  const clean: Record<string, string> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (SENSITIVE_PARAMS.has(key.toLowerCase())) {
+      clean[key] = "[REDACTED]";
+    } else {
+      clean[key] = sanitizeStoredValue(key, value);
+    }
+  }
+  return clean;
+}
+
+function sanitizeStoredValue(key: string, value: string): string {
+  // Try JSON parse first
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === "object" && parsed !== null) {
+      return JSON.stringify(sanitizeJsonRecursive(parsed));
+    }
+    throw new Error("scalar");
+  } catch {
+    // Not JSON object; check whether the whole value is a secret by key context
+    if (SENSITIVE_PARAMS.has(key.toLowerCase())) return "[REDACTED]";
+    let clean = value;
+    for (const pattern of TOKEN_PATTERNS) {
+      clean = clean.replace(pattern, "[REDACTED-TOKEN]");
+    }
+    return clean;
+  }
+}
+
+/**
+ * Sanitize arbitrary text: parse as JSON if possible, otherwise mask tokens.
+ */
+function sanitizeText(body: string): string {
   // First try to parse as JSON and sanitize recursively
   try {
     const parsed = JSON.parse(body);
-    const clean = sanitizeJsonRecursive(parsed);
-    return JSON.stringify(clean);
+    if (typeof parsed === "object" && parsed !== null) {
+      return JSON.stringify(sanitizeJsonRecursive(parsed));
+    }
+    throw new Error("not object");
   } catch {
-    // Not JSON, sanitize as plain text
+    // Not JSON (or scalar), sanitize as plain text
     let clean = body;
     for (const pattern of TOKEN_PATTERNS) {
       clean = clean.replace(pattern, "[REDACTED-TOKEN]");
