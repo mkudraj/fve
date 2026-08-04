@@ -1,74 +1,124 @@
-# FACEIT Pre-Match Lobby Network Investigator
+# FACEIT Pre-Match Scout
 
-Captures and analyzes FACEIT matchmaking network traffic via Chrome DevTools Protocol to determine whether match data (match_id, roster, map, server) arrives in the browser before the official UI reveal.
+Chrome extension (Manifest V3) that reveals FACEIT match rosters **before** clicking Accept — via the official FACEIT Data API.
 
-## Quick start
+Also includes the original CDP-based network investigator used during the research phase.
+
+---
+
+## Chrome Extension (MVP)
+
+### What it does
+
+```
+FACEIT ready-check -> detect matchId -> FACEIT Data API -> full 5+5 roster -> overlay on page before Accept
+```
+
+### Manual test
+
+1. Install dependencies:
+   ```bash
+   cd packages/core && npm install && cd ../..
+   cd extension && npm install && cd ..
+   ```
+2. Run core tests:
+   ```bash
+   cd packages/core && npm test && cd ../..
+   ```
+3. Build the extension:
+   ```bash
+   cd extension && npm run build && cd ..
+   ```
+4. Open `chrome://extensions`
+5. Enable **Developer mode** (top-right toggle)
+6. Click **Load unpacked**
+7. Select `extension/dist`
+8. Click the extension icon -> **Open Options**
+9. Enter your FACEIT Data API key (from https://developers.faceit.com)
+10. Click **Test key**
+11. Open https://www.faceit.com and start FACEIT Anti-Cheat
+12. Enter CS2 matchmaking -> click **Find Match**
+13. When the Accept button appears, wait a moment
+14. The overlay should show both team rosters
+15. Click Accept before the timer expires
+
+### Project structure
+
+```
+packages/core/         Shared TypeScript logic
+├── match-id.ts        matchId extraction with 1- prefix regex
+├── faceit-client.ts   FACEIT Data API client
+├── roster.ts          Roster parsing (teams.faction1/faction2)
+├── types.ts           FaceitPlayer, MatchScoutState
+└── *.test.ts          32 unit tests (Node test runner)
+
+extension/             Chrome Extension (Manifest V3)
+├── src/
+│   ├── background/    Service worker: webRequest listener, API calls, state machine
+│   ├── content/       Content script: React overlay in Shadow DOM
+│   ├── popup/         Extension popup: status, clear match, open options
+│   ├── options/       Options page: API key, display toggles, test key
+│   └── shared/        Message types, ScoutOptions
+├── public/
+│   ├── manifest.json  MV3 manifest
+│   ├── popup.html
+│   └── options.html
+├── build.mjs          esbuild bundler
+└── dist/              Built extension (load this in Chrome)
+```
+
+### Key design decisions
+
+- **Shadow DOM** for overlay isolation (no CSS conflicts with FACEIT)
+- **chrome.webRequest.onBeforeRequest** for matchId detection (no debugger, no cookies, no blocking)
+- **chrome.storage.local** for API key (never sent to content script)
+- **Bounded retries** (0ms, 500ms, 1500ms) — no infinite polling
+- **No Leetify** integration in this MVP
+
+### MatchScoutState machine
+
+```
+idle -> match-detected -> loading -> ready
+                               \-> partial
+                               \-> error
+```
+
+---
+
+## CDP Investigator (research tool)
+
+The original tool that proved CASE_A: roster is available via Data API before Accept.
+
+### Quick start
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Start Chrome with remote debugging enabled
-./scripts/start-chrome.sh
-
-# 3. Navigate to https://www.faceit.com and log in
-
-# 4. Start the investigator
+./scripts/start-chrome.sh          # or .ps1 on Windows
 npm run start
-
-# 5. Queue for a match and use CLI markers at each stage:
-#    [1] Queue started
-#    [2] Match found
-#    [3] Ready check visible
-#    [4] Accepted
-#    [5] Opponents officially revealed
-#    [6] Match room loaded
-#    [7] / "stop" — Stop capture and generate report
 ```
 
-## How it works
+Queue for a match and use CLI markers at each stage:
+- `[1]` Queue started
+- `[2]` Match found
+- `[3]` Ready check visible
+- `[4]` Accepted
+- `[5]` Opponents revealed
+- `[6]` Match room loaded
+- `/` or `stop` — Stop and generate report
 
-1. Connects to Chrome via CDP on port 9222
-2. Finds the active FACEIT tab
-3. Captures all Fetch/XHR requests and responses (including bodies)
-4. Captures all WebSocket frames (sent + received)
-5. Searches captured data for match-related terms (match_id, roster, map, server, etc.)
-6. Classifies findings as pre-reveal or post-reveal based on manual time markers
-7. Generates a Markdown + JSON report with findings and a CASE_A/B/C recommendation
-
-## Output
-
-Reports are saved in `output/session-<id>/`:
-
-| File | Description |
-|------|-------------|
-| `report.md` | Human-readable findings and recommendations |
-| `report.json` | Full session data with markers, hits, and findings |
-| `timeline.json` | Chronological timeline of all events |
-| `matches.json` | All extracted match hits |
-
-## Re-analyzing a session
-
-```bash
-# Analyze the latest session
-npm run analyze
-
-# Analyze a specific session
-npm run analyze output/session-<id>
-```
-
-## Scripts
+### Scripts
 
 | Command | Description |
 |---------|-------------|
 | `npm run build` | Compile TypeScript |
 | `npm run start` | Start live capture |
-| `npm run analyze` | Re-analyze saved session data |
-| `npm run typecheck` | TypeScript type checking |
+| `npm run analyze` | Re-analyze saved session |
 | `npm test` | Run unit tests |
+| `npm run typecheck` | TypeScript type checking |
 
-## Requirements
+### Requirements
 
 - Node.js 20+
 - Google Chrome (stable)
-- macOS or Linux
+- Windows, macOS, or Linux
+

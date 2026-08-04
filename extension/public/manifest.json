@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "FACEIT Pre-Match Scout",
+  "version": "0.1.0",
+  "description": "Shows FACEIT match roster before accepting - via official Data API.",
+  "permissions": ["storage", "webRequest"],
+  "host_permissions": [
+    "https://www.faceit.com/*",
+    "https://open.faceit.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.faceit.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FACEIT Pre-Match Scout"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

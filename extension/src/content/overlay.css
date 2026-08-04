@@ -1,0 +1,7 @@
+/* Overlay base styles - injected into Shadow DOM by the content script. */
+/* Main styles are inline in components to avoid CSS conflicts with FACEIT. */
+
+#fve-overlay {
+  all: initial;
+  display: block;
+}
