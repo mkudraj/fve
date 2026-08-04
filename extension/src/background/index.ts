@@ -4,8 +4,9 @@
  * Responsibilities:
  *  1. Detect matchId from FACEIT network requests (webRequest).
  *  2. Fetch full roster from FACEIT Data API.
- *  3. Broadcast state changes to content script and popup.
- *  4. Serve popup state queries.
+ *  3. Fetch Aim Ratings from Leetify (progressive, concurrency-limited).
+ *  4. Broadcast state changes to content script and popup.
+ *  5. Serve popup state queries.
  */
 
 import { isFullRoster } from "@fve/core";
@@ -21,6 +22,7 @@ import {
 } from "./state.js";
 import { startMatchDetection, resetDetection } from "./match-detector.js";
 import { loadMatchRoster, LoadError } from "./match-loader.js";
+import { loadAimRatings } from "./leetify-loader.js";
 import type {
   StateChangedMessage,
   PopupStateMessage,
@@ -31,12 +33,17 @@ import type { ScoutOptions } from "../shared/types.js";
 
 const DEFAULT_OPTIONS: ScoutOptions = {
   faceitApiKey: "",
+  leetifyApiKey: "",
   enableOverlay: true,
+  enableAimRating: true,
   showSteamName: true,
   showFaceitLevel: true,
   showMembership: true,
   showTechnicalIds: false,
 };
+
+/** Abort controller for cancelling in-flight Leetify requests on new match. */
+let leetifyAbort: AbortController | null = null;
 
 async function getOptions(): Promise<ScoutOptions> {
   const stored = await chrome.storage.local.get("scoutOptions");
@@ -66,6 +73,12 @@ async function broadcastState(state: MatchScoutState): Promise<void> {
 
 /** Handle matchId detection. */
 async function onMatchDetected(matchId: string): Promise<void> {
+  // Cancel any in-flight Leetify requests from previous match.
+  if (leetifyAbort) {
+    leetifyAbort.abort();
+    leetifyAbort = null;
+  }
+
   const options = await getOptions();
 
   if (!options.enableOverlay) return;
@@ -106,6 +119,52 @@ async function onMatchDetected(matchId: string): Promise<void> {
   }
 
   await broadcastState(getState());
+
+  // If roster loaded successfully and Leetify is configured, fetch Aim Ratings.
+  const state = getState();
+  if (
+    state.status === "ready" &&
+    options.enableAimRating &&
+    options.leetifyApiKey
+  ) {
+    fetchAimRatings(state.matchId, options.leetifyApiKey);
+  }
+}
+
+/**
+ * Fetch Aim Ratings for all players in the current ready state.
+ * Runs asynchronously — updates state and broadcasts after each player.
+ */
+async function fetchAimRatings(
+  matchId: string,
+  apiKey: string,
+): Promise<void> {
+  const state = getState();
+  if (state.status !== "ready") return;
+
+  const allPlayers = [...state.faction1, ...state.faction2];
+
+  leetifyAbort = new AbortController();
+
+  const timing = await loadAimRatings(
+    allPlayers,
+    apiKey,
+    (updatedPlayer) => {
+      // Guard: only broadcast if still on the same match.
+      const current = getState();
+      if (current.status !== "ready" || current.matchId !== matchId) return;
+
+      broadcastState(current);
+    },
+    leetifyAbort.signal,
+  );
+
+  // Final guard + attach timing.
+  const current = getState();
+  if (current.status === "ready" && current.matchId === matchId) {
+    current.aimTiming = timing;
+    await broadcastState(current);
+  }
 }
 
 /** Serve popup state queries. */
@@ -116,36 +175,38 @@ function handlePopupMessage(
 ): boolean {
   if (message.type === "POPUP_GET_STATE") {
     getOptions().then((options) => {
+      const state = getState();
       sendResponse({
         type: "POPUP_STATE",
-        state: getState(),
+        state,
         apiKeyConfigured: !!options.faceitApiKey,
+        leetifyKeyConfigured: !!options.leetifyApiKey,
         overlayEnabled: options.enableOverlay,
+        aimRatingEnabled: options.enableAimRating,
         lastError:
-          getState().status === "error" ? getState().message : null,
+          state.status === "error" ? state.message : null,
       });
     });
-    return true; // async response
+    return true;
   }
 
   if (message.type === "POPUP_CLEAR_MATCH") {
+    // Cancel in-flight Leetify requests.
+    if (leetifyAbort) {
+      leetifyAbort.abort();
+      leetifyAbort = null;
+    }
     resetToIdle();
     resetDetection();
     broadcastState(getState());
-    sendResponse({
-      type: "POPUP_STATE",
-      state: getState(),
-      apiKeyConfigured: false,
-      overlayEnabled: false,
-      lastError: null,
-    });
-    // Re-fetch options for the response.
     getOptions().then((options) => {
       sendResponse({
         type: "POPUP_STATE",
         state: getState(),
         apiKeyConfigured: !!options.faceitApiKey,
+        leetifyKeyConfigured: !!options.leetifyApiKey,
         overlayEnabled: options.enableOverlay,
+        aimRatingEnabled: options.enableAimRating,
         lastError: null,
       });
     });

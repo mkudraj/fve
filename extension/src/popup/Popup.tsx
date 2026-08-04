@@ -10,7 +10,9 @@ import type { PopupStateMessage } from "../shared/messages.js";
 interface PopupData {
   state: MatchScoutState;
   apiKeyConfigured: boolean;
+  leetifyKeyConfigured: boolean;
   overlayEnabled: boolean;
+  aimRatingEnabled: boolean;
   lastError: string | null;
 }
 
@@ -52,19 +54,27 @@ const Popup: React.FC = () => {
       loadedAt: Date.now(),
       matchStatus: "CHECK_IN",
       faction1: [
-        { nickname: "GR1NA", playerId: "p1", steamId64: "76561198249664530", steamName: "Gringo", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA" },
-        { nickname: "siNCo-", playerId: "p2", steamId64: "76561198119694078", steamName: "siNCo", level: 10, membership: "free", anticheatRequired: true, team: "team_GR1NA" },
-        { nickname: "-AthE", playerId: "p3", steamId64: "76561198838634986", steamName: "AthE", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA" },
-        { nickname: "-T0KI", playerId: "p4", steamId64: "76561198838474668", steamName: "T0KI", level: 10, membership: "free", anticheatRequired: true, team: "team_GR1NA" },
-        { nickname: "Ceo---", playerId: "p5", steamId64: "76561198362845213", steamName: "Ceo", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA" },
+        { nickname: "GR1NA", playerId: "p1", steamId64: "76561198249664530", steamName: "Gringo", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA", aim: { status: "available", value: 81 } },
+        { nickname: "siNCo-", playerId: "p2", steamId64: "76561198119694078", steamName: "siNCo", level: 10, membership: "free", anticheatRequired: true, team: "team_GR1NA", aim: { status: "available", value: 74 } },
+        { nickname: "-AthE", playerId: "p3", steamId64: "76561198838634986", steamName: "AthE", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA", aim: { status: "unavailable", reason: "private" } },
+        { nickname: "-T0KI", playerId: "p4", steamId64: "76561198838474668", steamName: "T0KI", level: 10, membership: "free", anticheatRequired: true, team: "team_GR1NA", aim: { status: "available", value: 68 } },
+        { nickname: "Ceo---", playerId: "p5", steamId64: "76561198362845213", steamName: "Ceo", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA", aim: { status: "loading" } },
       ],
       faction2: [
-        { nickname: "108-", playerId: "p6", steamId64: "76561198782132866", steamName: "108", level: 10, membership: "free", anticheatRequired: true, team: "team_108-" },
-        { nickname: "shorstky", playerId: "p7", steamId64: "76561198070756713", steamName: "shorstky", level: 10, membership: "premium", anticheatRequired: true, team: "team_108-" },
-        { nickname: "tumi", playerId: "p8", steamId64: "76561198035293177", steamName: "tumi", level: 10, membership: "free", anticheatRequired: true, team: "team_108-" },
-        { nickname: "shadyb", playerId: "p9", steamId64: "76561198080436813", steamName: "shadyb", level: 10, membership: "premium", anticheatRequired: true, team: "team_108-" },
-        { nickname: "AHLIN-", playerId: "p10", steamId64: "76561198108255427", steamName: "AHLIN", level: 10, membership: "free", anticheatRequired: true, team: "team_108-" },
+        { nickname: "108-", playerId: "p6", steamId64: "76561198782132866", steamName: "108", level: 10, membership: "free", anticheatRequired: true, team: "team_108-", aim: { status: "available", value: 55 } },
+        { nickname: "shorstky", playerId: "p7", steamId64: "76561198070756713", steamName: "shorstky", level: 10, membership: "premium", anticheatRequired: true, team: "team_108-", aim: { status: "available", value: 90 } },
+        { nickname: "tumi", playerId: "p8", steamId64: "76561198035293177", steamName: "tumi", level: 10, membership: "free", anticheatRequired: true, team: "team_108-", aim: { status: "unavailable", reason: "not-registered" } },
+        { nickname: "shadyb", playerId: "p9", steamId64: "76561198080436813", steamName: "shadyb", level: 10, membership: "premium", anticheatRequired: true, team: "team_108-", aim: { status: "available", value: 63 } },
+        { nickname: "AHLIN-", playerId: "p10", steamId64: "76561198108255427", steamName: "AHLIN", level: 10, membership: "free", anticheatRequired: true, team: "team_108-", aim: { status: "error", message: "Network timeout" } },
       ],
+      aimTiming: {
+        requestsStartedAt: Date.now() - 500,
+        firstAimLoadedAt: Date.now() - 200,
+        allAimRequestsFinishedAt: Date.now(),
+        availableAimCount: 6,
+        unavailableAimCount: 2,
+        errorAimCount: 1,
+      },
     };
 
     const tabs = await chrome.tabs.query({ url: "https://www.faceit.com/*" });
@@ -79,7 +89,7 @@ const Popup: React.FC = () => {
     return <div style={{ padding: 8, textAlign: "center", color: "#888" }}>Loading...</div>;
   }
 
-  const { state, apiKeyConfigured, overlayEnabled, lastError } = data;
+  const { state, apiKeyConfigured, leetifyKeyConfigured, overlayEnabled, aimRatingEnabled, lastError } = data;
 
   const statusLabel =
     state.status === "idle"
@@ -116,6 +126,12 @@ const Popup: React.FC = () => {
           <span className="label">API Key</span>
           <span className="value" style={{ color: apiKeyConfigured ? "#4caf50" : "#e94560" }}>
             {apiKeyConfigured ? "Configured" : "Missing"}
+          </span>
+        </div>
+        <div className="row">
+          <span className="label">Leetify Key</span>
+          <span className="value" style={{ color: leetifyKeyConfigured ? "#4caf50" : "#e94560" }}>
+            {leetifyKeyConfigured ? "Configured" : "Missing"}
           </span>
         </div>
         <div className="row">

@@ -33,7 +33,9 @@ export interface PopupStateMessage {
   type: "POPUP_STATE";
   state: MatchScoutState;
   apiKeyConfigured: boolean;
+  leetifyKeyConfigured: boolean;
   overlayEnabled: boolean;
+  aimRatingEnabled: boolean;
   lastError: string | null;
 }
 

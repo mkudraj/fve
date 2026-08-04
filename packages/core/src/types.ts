@@ -8,6 +8,30 @@ export interface FaceitPlayer {
   membership: string | null;
   anticheatRequired: boolean;
   team: string | null;
+  /** Aim Rating from Leetify (populated progressively after roster loads). */
+  aim?: AimRatingState;
+}
+
+/** Leetify Aim Rating state per player. */
+export type AimRatingState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "available"; value: number; profileUrl?: string }
+  | {
+      status: "unavailable";
+      reason: "not-registered" | "private" | "not-found" | "missing-steam-id";
+    }
+  | { status: "rate-limited" }
+  | { status: "error"; message: string };
+
+/** Timing measurements for Leetify integration (dev mode). */
+export interface AimTiming {
+  requestsStartedAt: number;
+  firstAimLoadedAt: number | null;
+  allAimRequestsFinishedAt: number | null;
+  availableAimCount: number;
+  unavailableAimCount: number;
+  errorAimCount: number;
 }
 
 /** The extension's state machine. */
@@ -31,6 +55,7 @@ export type MatchScoutState =
       matchStatus: string;
       faction1: FaceitPlayer[];
       faction2: FaceitPlayer[];
+      aimTiming?: AimTiming;
     }
   | {
       status: "partial";

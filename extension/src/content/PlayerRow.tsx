@@ -3,12 +3,65 @@
  */
 
 import React from "react";
-import type { FaceitPlayer } from "@fve/core";
+import type { FaceitPlayer, AimRatingState } from "@fve/core";
 
 interface PlayerRowProps {
   player: FaceitPlayer;
   expanded: boolean;
   onToggle: () => void;
+}
+
+function renderAim(aim: AimRatingState | undefined): React.ReactNode {
+  if (!aim || aim.status === "idle") return null;
+
+  const baseStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    marginLeft: 8,
+  };
+
+  switch (aim.status) {
+    case "loading":
+      return <span style={{ ...baseStyle, color: "#666" }} title="Loading Leetify data...">Aim: …</span>;
+    case "available":
+      return (
+        <span
+          style={{ ...baseStyle, color: "#4caf50" }}
+          title={`Leetify Aim Rating: ${aim.value}`}
+        >
+          Aim: {aim.value}
+        </span>
+      );
+    case "unavailable":
+      return (
+        <span
+          style={{ ...baseStyle, color: "#888" }}
+          title="Leetify data unavailable"
+        >
+          Aim: N/A
+        </span>
+      );
+    case "rate-limited":
+      return (
+        <span
+          style={{ ...baseStyle, color: "#f0a500" }}
+          title="Leetify rate limited"
+        >
+          Aim: …
+        </span>
+      );
+    case "error":
+      return (
+        <span
+          style={{ ...baseStyle, color: "#e94560" }}
+          title="Failed to load Leetify profile"
+        >
+          Aim: Error
+        </span>
+      );
+    default:
+      return null;
+  }
 }
 
 export const PlayerRow: React.FC<PlayerRowProps> = ({
@@ -40,13 +93,14 @@ export const PlayerRow: React.FC<PlayerRowProps> = ({
           (e.currentTarget as HTMLElement).style.background = "transparent";
       }}
     >
-      <span style={{ fontWeight: 500 }}>
+      <span style={{ fontWeight: 500, display: "flex", alignItems: "center" }}>
         {player.nickname ?? "?"}
         {player.steamName && player.steamName !== player.nickname && (
           <span style={{ color: "#888", marginLeft: 6, fontSize: 11 }}>
             ({player.steamName})
           </span>
         )}
+        {renderAim(player.aim)}
       </span>
       <span style={{ color: "#e94560", fontSize: 12, fontWeight: 600 }}>
         {player.level !== null ? `Level ${player.level}` : "?"}

@@ -5,7 +5,9 @@
 /** Options stored in chrome.storage.local. */
 export interface ScoutOptions {
   faceitApiKey: string;
+  leetifyApiKey: string;
   enableOverlay: boolean;
+  enableAimRating: boolean;
   showSteamName: boolean;
   showFaceitLevel: boolean;
   showMembership: boolean;

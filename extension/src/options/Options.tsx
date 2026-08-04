@@ -8,7 +8,9 @@ import type { ScoutOptions } from "../shared/types.js";
 
 const DEFAULT_OPTIONS: ScoutOptions = {
   faceitApiKey: "",
+  leetifyApiKey: "",
   enableOverlay: true,
+  enableAimRating: true,
   showSteamName: true,
   showFaceitLevel: true,
   showMembership: true,
@@ -19,6 +21,7 @@ const Options: React.FC = () => {
   const [options, setOptions] = useState<ScoutOptions>(DEFAULT_OPTIONS);
   const [status, setStatus] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
+  const [testingLeetify, setTestingLeetify] = useState(false);
 
   useEffect(() => {
     chrome.storage.local.get("scoutOptions", (result) => {
@@ -71,6 +74,48 @@ const Options: React.FC = () => {
     }
   };
 
+  const testLeetifyKey = async () => {
+    if (!options.leetifyApiKey) {
+      setStatus({ type: "error", text: "Enter a Leetify API key first." });
+      return;
+    }
+    setTestingLeetify(true);
+    setStatus(null);
+
+    try {
+      const res = await fetch(
+        "https://api-public.cs-prod.leetify.com/api-key/validate",
+        {
+          headers: {
+            _leetify_key: options.leetifyApiKey,
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (res.status === 200) {
+        setStatus({ type: "ok", text: "Leetify key is valid." });
+      } else if (res.status === 401) {
+        setStatus({ type: "error", text: "Invalid Leetify key." });
+      } else if (res.status === 429) {
+        const retryAfter = res.headers.get("Retry-After");
+        const waitSeconds = retryAfter ? parseInt(retryAfter, 10) : null;
+        const msg = waitSeconds
+          ? `Rate limited. Retry after ${waitSeconds}s.`
+          : "Rate limited (HTTP 429). Wait a moment and retry.";
+        setStatus({ type: "ok", text: msg });
+      } else if (res.status === 500) {
+        setStatus({ type: "error", text: "Leetify server error. Try again later." });
+      } else {
+        setStatus({ type: "error", text: `Unexpected response: HTTP ${res.status}` });
+      }
+    } catch {
+      setStatus({ type: "error", text: "Network error - check your connection." });
+    } finally {
+      setTestingLeetify(false);
+    }
+  };
+
   const update = (patch: Partial<ScoutOptions>) => {
     setOptions((prev) => ({ ...prev, ...patch }));
   };
@@ -88,6 +133,28 @@ const Options: React.FC = () => {
           onChange={(e) => update({ faceitApiKey: e.target.value })}
           placeholder="Enter your FACEIT Data API key..."
         />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="leetifyKey">Leetify API Key</label>
+        <input
+          id="leetifyKey"
+          type="password"
+          value={options.leetifyApiKey}
+          onChange={(e) => update({ leetifyApiKey: e.target.value })}
+          placeholder="Enter your Leetify API key..."
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={options.enableAimRating}
+            onChange={(e) => update({ enableAimRating: e.target.checked })}
+          />
+          Enable Aim Rating
+        </label>
       </div>
 
       <div className="form-group">
@@ -148,7 +215,10 @@ const Options: React.FC = () => {
       <div className="actions">
         <button onClick={save}>Save</button>
         <button onClick={testKey} disabled={testing} className="secondary">
-          {testing ? "Testing..." : "Test key"}
+          {testing ? "Testing..." : "Test FACEIT key"}
+        </button>
+        <button onClick={testLeetifyKey} disabled={testingLeetify} className="secondary">
+          {testingLeetify ? "Testing..." : "Test Leetify key"}
         </button>
       </div>
 

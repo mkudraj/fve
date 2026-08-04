@@ -188,6 +188,29 @@ function renderContent(
             <div>Match status: {state.matchStatus}</div>
             <div>Match ID: {state.matchId}</div>
             <div>Roster loaded in: {state.loadedAt - state.detectedAt} ms</div>
+            {state.aimTiming && state.aimTiming.firstAimLoadedAt != null && (
+              <>
+                <div>
+                  First Aim loaded:{" "}
+                  {state.aimTiming.firstAimLoadedAt - state.aimTiming.requestsStartedAt} ms
+                </div>
+                <div>
+                  Aim available: {state.aimTiming.availableAimCount}
+                  /{state.aimTiming.availableAimCount + state.aimTiming.unavailableAimCount + state.aimTiming.errorAimCount}
+                </div>
+              </>
+            )}
+            <div
+              style={{
+                marginTop: 4,
+                paddingTop: 4,
+                borderTop: "1px solid #2a2a4a",
+                fontSize: 10,
+                color: "#555",
+              }}
+            >
+              Data Provided by Leetify
+            </div>
           </div>
         </div>
       );
