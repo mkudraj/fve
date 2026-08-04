@@ -207,7 +207,7 @@ function generateFindings(report: SessionReport): Finding[] {
 
 function buildInvestigationTable(report: SessionReport): string {
   const rows: string[] = [];
-  rows.push("| Źródło | Faza | HTTP status | Match ID | Liczba graczy | Nickname'i | Player IDs | Steam IDs |");
+  rows.push("| Source | Phase | HTTP status | Match ID | Player count | Nicknames | Player IDs | Steam IDs |");
   rows.push("|---|---|---|---|---|---|---|---|");
 
   const byPhase: Record<string, { status: number; body: string | null; ts: string }> = {};
@@ -286,7 +286,7 @@ function generateMarkdownReport(report: SessionReport): string {
 
   md += `## Investigation (Data API vs Internal, pre/post Accept)\n\n`;
   if (report.dataApi.length === 0 && report.internal.length === 0) {
-    md += `_Brak danych z dochodzenia — nie wykryto matchId ani nie wykonano żądań API._\n\n`;
+    md += `_No investigation data — matchId was not detected and no API requests were made._\n\n`;
   } else {
     md += `${buildInvestigationTable(report)}\n\n`;
   }
