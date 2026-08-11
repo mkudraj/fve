@@ -7,34 +7,34 @@ import { extractAimRating, classifyLeetifyError } from "./leetify-client.js";
 
 // ---- extractAimRating ----
 
-test("extractAimRating - extracts rating.aim from ProfileResponse", () => {
+test("extractAimRating - extracts recentGameRatings.aim from profile response", () => {
   const data = {
-    rating: { aim: 81.4, positioning: 57.1 },
+    recentGameRatings: { aim: 81.4, positioning: 57.1 },
   };
   assert.strictEqual(extractAimRating(data), 81.4);
 });
 
 test("extractAimRating - aim of 0 is valid (not N/A)", () => {
-  const data = { rating: { aim: 0 } };
+  const data = { recentGameRatings: { aim: 0 } };
   assert.strictEqual(extractAimRating(data), 0);
 });
 
-test("extractAimRating - missing rating returns null", () => {
+test("extractAimRating - missing recentGameRatings returns null", () => {
   assert.strictEqual(extractAimRating({ name: "test" }), null);
 });
 
 test("extractAimRating - missing aim field returns null", () => {
-  assert.strictEqual(extractAimRating({ rating: { positioning: 50 } }), null);
+  assert.strictEqual(extractAimRating({ recentGameRatings: { positioning: 50 } }), null);
 });
 
 test("extractAimRating - aim is not a number returns null", () => {
-  assert.strictEqual(extractAimRating({ rating: { aim: "81" } }), null);
-  assert.strictEqual(extractAimRating({ rating: { aim: null } }), null);
+  assert.strictEqual(extractAimRating({ recentGameRatings: { aim: "81" } }), null);
+  assert.strictEqual(extractAimRating({ recentGameRatings: { aim: null } }), null);
 });
 
 test("extractAimRating - aim is NaN or Infinity returns null", () => {
-  assert.strictEqual(extractAimRating({ rating: { aim: NaN } }), null);
-  assert.strictEqual(extractAimRating({ rating: { aim: Infinity } }), null);
+  assert.strictEqual(extractAimRating({ recentGameRatings: { aim: NaN } }), null);
+  assert.strictEqual(extractAimRating({ recentGameRatings: { aim: Infinity } }), null);
 });
 
 test("extractAimRating - null input returns null", () => {
@@ -65,22 +65,6 @@ test("classifyLeetifyError - temporary-error with message", () => {
     message: "connection refused",
   });
   assert.strictEqual(msg, "connection refused");
-});
-
-test("classifyLeetifyError - unavailable private", () => {
-  const msg = classifyLeetifyError({
-    status: "unavailable",
-    reason: "private",
-  });
-  assert.ok(msg.includes("private"), msg);
-});
-
-test("classifyLeetifyError - unavailable not-registered", () => {
-  const msg = classifyLeetifyError({
-    status: "unavailable",
-    reason: "not-registered",
-  });
-  assert.ok(msg.includes("not registered"), msg);
 });
 
 test("classifyLeetifyError - unavailable not-found", () => {

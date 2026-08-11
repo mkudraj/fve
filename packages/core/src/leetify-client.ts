@@ -199,12 +199,12 @@ interface PerMatchData {
 }
 
 /**
- * Fetch recent FACEIT match stats for a player via Leetify API.
- * Aggregates the last 20 FACEIT-only matches.
+ * Fetch recent FACEIT match stats for a player via the internal Leetify API.
+ * Aggregates the last N FACEIT-only matches from the games[] array.
  */
 export async function fetchRecentMatchStats(
   steamId64: string,
-  apiKey: string,
+  _apiKey?: string,
   maxMatches: number = 20,
   timeoutMs: number = 10000,
   signal?: AbortSignal,
@@ -214,32 +214,36 @@ export async function fetchRecentMatchStats(
   if (signal) signal.addEventListener("abort", () => controller.abort());
 
   try {
-    const url = `${API_BASE}/v3/profile/matches?steam64_id=${encodeURIComponent(steamId64)}`;
+    const url = `${API_BASE}/api/profile/id/${encodeURIComponent(steamId64)}`;
     const res = await fetch(url, {
-      headers: { _leetify_key: apiKey, Accept: "application/json" },
+      headers: { Accept: "application/json" },
       signal: controller.signal,
     });
 
     if (!res.ok) return null;
-    const matches = await res.json() as Array<Record<string, unknown>>;
-    if (!Array.isArray(matches) || matches.length === 0) return null;
+    const data = await res.json() as Record<string, unknown>;
+    if (!data || typeof data !== "object") return null;
+
+    const games = data.games;
+    if (!Array.isArray(games) || games.length === 0) return null;
 
     // Filter FACEIT only, take last N.
-    const faceitMatches = matches.filter((m) => m.data_source === "faceit");
-    const recent = faceitMatches.slice(0, maxMatches);
+    const faceitGames = (games as Array<Record<string, unknown>>)
+      .filter((g) => g.dataSource === "faceit");
+    const recent = faceitGames.slice(0, maxMatches);
     if (recent.length === 0) return null;
 
     // Extract per-match data.
     const perMatch: PerMatchData[] = [];
-    for (const match of recent) {
-      const pm = extractPerMatchData(match, steamId64);
+    for (const game of recent) {
+      const pm = extractPerMatchFromGame(game, steamId64);
       if (pm) perMatch.push(pm);
     }
     if (perMatch.length === 0) return null;
 
     // Aggregate.
     let totalKills = 0, totalDeaths = 0, totalAssists = 0;
-    let totalDamage = 0, totalRounds = 0, wins = 0;
+    let wins = 0;
     let totalRating = 0, ratingCount = 0;
 
     const now = Date.now();
@@ -251,15 +255,12 @@ export async function fetchRecentMatchStats(
       totalKills += m.kills;
       totalDeaths += m.deaths;
       totalAssists += m.assists;
-      totalDamage += m.damage;
-      totalRounds += m.rounds;
       if (m.won) wins++;
       if (m.rating !== null) {
         totalRating += m.rating;
         ratingCount++;
       }
 
-      // Last 24h check.
       if (m.finishedAt) {
         const finishedMs = new Date(m.finishedAt).getTime();
         if (now - finishedMs <= DAY_MS) {
@@ -269,7 +270,7 @@ export async function fetchRecentMatchStats(
       }
     }
 
-    // Rating swing: first match is oldest, last match is newest (API returns newest first).
+    // Rating swing: first match is newest, last is oldest (API returns newest first).
     const oldestRating = perMatch[perMatch.length - 1].rating;
     const newestRating = perMatch[0].rating;
     const ratingSwing =
@@ -281,12 +282,10 @@ export async function fetchRecentMatchStats(
     let last24h: RecentMatchStats["last24h"] = null;
     if (last24hGames > 0 && last24hRatings.length >= 3) {
       const avg = last24hRatings.reduce((a, b) => a + b, 0) / last24hRatings.length;
-      // Check consistency: standard deviation of ratings.
       const variance =
         last24hRatings.reduce((sum, r) => sum + (r - avg) ** 2, 0) /
         last24hRatings.length;
       const stdDev = Math.sqrt(variance);
-      // If std dev is low (< ~0.08 on Leetify scale), player is consistent.
       const consistent = stdDev < 0.08;
       last24h = {
         games: last24hGames,
@@ -305,11 +304,11 @@ export async function fetchRecentMatchStats(
 
     return {
       matchesAnalyzed: perMatch.length,
-      totalMatches: faceitMatches.length,
+      totalMatches: faceitGames.length,
       winRate: perMatch.length > 0 ? wins / perMatch.length : null,
       kdRatio: totalDeaths > 0 ? totalKills / totalDeaths : null,
-      killsPerRound: totalRounds > 0 ? totalKills / totalRounds : null,
-      adr: totalRounds > 0 ? totalDamage / totalRounds : null,
+      killsPerRound: null, // not available from internal API
+      adr: null,            // not available from internal API
       kills: totalKills,
       deaths: totalDeaths,
       assists: totalAssists,
@@ -324,50 +323,30 @@ export async function fetchRecentMatchStats(
   }
 }
 
-function extractPerMatchData(
-  match: Record<string, unknown>,
+/**
+ * Extract per-match data from an internal API game object.
+ */
+function extractPerMatchFromGame(
+  game: Record<string, unknown>,
   steamId64: string,
 ): PerMatchData | null {
-  const statsArr = match.stats;
-  if (!Array.isArray(statsArr)) return null;
+  const kills = typeof game.kills === "number" ? game.kills : 0;
+  const deaths = typeof game.deaths === "number" ? game.deaths : 0;
+  const assists = 0; // not available from internal API
 
-  for (const s of statsArr) {
-    if (!s || typeof s !== "object") continue;
-    const ps = s as Record<string, unknown>;
-    if (ps.steam64_id !== steamId64) continue;
-
-    const kills = typeof ps.total_kills === "number" ? ps.total_kills : 0;
-    const deaths = typeof ps.total_deaths === "number" ? ps.total_deaths : 0;
-    const assists = typeof ps.total_assists === "number" ? ps.total_assists : 0;
-    const damage = typeof ps.total_damage === "number" ? ps.total_damage : 0;
-    const rounds = typeof ps.rounds_count === "number" ? ps.rounds_count : 0;
-    const rating =
-      typeof ps.leetify_rating === "number" ? ps.leetify_rating : null;
-    const finishedAt =
-      typeof match.finished_at === "string" ? match.finished_at : null;
-
-    // Determine win.
-    let won = false;
-    const teamScores = match.team_scores;
-    const playerTeam =
-      typeof ps.initial_team_number === "number"
-        ? ps.initial_team_number
-        : null;
-    if (Array.isArray(teamScores) && playerTeam !== null) {
-      const ts = teamScores as Array<Record<string, unknown>>;
-      const myTeam = ts.find((t) => t.team_number === playerTeam);
-      const oppTeam = ts.find((t) => t.team_number !== playerTeam);
-      if (myTeam && oppTeam) {
-        const myScore =
-          typeof myTeam.score === "number" ? myTeam.score : 0;
-        const oppScore =
-          typeof oppTeam.score === "number" ? oppTeam.score : 0;
-        won = myScore > oppScore;
-      }
-    }
-
-    return { kills, deaths, assists, damage, rounds, won, rating, finishedAt };
+  // Extract player's rating from ownTeamTotalLeetifyRatings.
+  let rating: number | null = null;
+  const ratings = game.ownTeamTotalLeetifyRatings;
+  if (ratings && typeof ratings === "object") {
+    const r = (ratings as Record<string, unknown>)[steamId64];
+    if (typeof r === "number") rating = r;
   }
 
-  return null;
+  const finishedAt =
+    typeof game.gameFinishedAt === "string" ? game.gameFinishedAt : null;
+
+  const won = game.matchResult === "win";
+
+  return { kills, deaths, assists, damage: 0, rounds: 0, won, rating, finishedAt };
 }
+

@@ -134,7 +134,7 @@ const ProfilesPage: React.FC = () => {
                         href={
                           p.aim?.status === "available" && p.aim.profileUrl
                             ? p.aim.profileUrl
-                            : `https://leetify.com/app/profile/${p.steamId64}`
+                            : `https://leetify.com/public/profile/${p.steamId64}`
                         }
                         target="_blank"
                         rel="noopener noreferrer"

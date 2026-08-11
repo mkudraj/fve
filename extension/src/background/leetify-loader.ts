@@ -54,7 +54,6 @@ function toAimState(
 export async function loadAimRatings(
   /** All players from both factions (10 elements). */
   players: FaceitPlayer[],
-  leetifyKey: string,
   /** Called after each player's aim is resolved. Receives the updated player. */
   onUpdate: (player: FaceitPlayer) => void,
   /** Optional abort signal for cancelling the entire batch (new match). */
@@ -102,7 +101,7 @@ export async function loadAimRatings(
       try {
         const result = await fetchLeetifyProfile(
           player.steamId64,
-          leetifyKey,
+          undefined,
           TIMEOUT_MS,
           signal,
         );
@@ -124,7 +123,7 @@ export async function loadAimRatings(
           try {
             const stats = await fetchRecentMatchStats(
               player.steamId64,
-              leetifyKey,
+              undefined,
               20,
               TIMEOUT_MS,
               signal,

@@ -120,14 +120,13 @@ async function onMatchDetected(matchId: string): Promise<void> {
 
   await broadcastState(getState());
 
-  // If roster loaded successfully and Leetify is configured, fetch Aim Ratings.
+  // If roster loaded successfully, fetch Aim Ratings (no API key needed for internal API).
   const state = getState();
   if (
     state.status === "ready" &&
-    options.enableAimRating &&
-    options.leetifyApiKey
+    options.enableAimRating
   ) {
-    fetchAimRatings(state.matchId, options.leetifyApiKey);
+    fetchAimRatings(state.matchId);
   }
 }
 
@@ -137,7 +136,6 @@ async function onMatchDetected(matchId: string): Promise<void> {
  */
 async function fetchAimRatings(
   matchId: string,
-  leetifyKey: string,
 ): Promise<void> {
   const state = getState();
   if (state.status !== "ready") return;
@@ -148,7 +146,6 @@ async function fetchAimRatings(
 
   const timing = await loadAimRatings(
     allPlayers,
-    leetifyKey,
     (updatedPlayer) => {
       // Guard: only broadcast if still on the same match.
       const current = getState();
@@ -180,7 +177,7 @@ function handlePopupMessage(
         type: "POPUP_STATE",
         state,
         apiKeyConfigured: !!options.faceitApiKey,
-        leetifyKeyConfigured: !!options.leetifyApiKey,
+        leetifyKeyConfigured: true, // internal API doesn't need a key
         overlayEnabled: options.enableOverlay,
         aimRatingEnabled: options.enableAimRating,
         lastError:

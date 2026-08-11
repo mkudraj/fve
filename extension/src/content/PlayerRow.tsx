@@ -125,7 +125,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = ({
             href={
               player.aim?.status === "available" && player.aim.profileUrl
                 ? player.aim.profileUrl
-                : `https://leetify.com/app/profile/${player.steamId64}`
+                : `https://leetify.com/public/profile/${player.steamId64}`
             }
             target="_blank"
             rel="noopener noreferrer"

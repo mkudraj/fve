@@ -7,7 +7,8 @@
   "host_permissions": [
     "https://www.faceit.com/*",
     "https://open.faceit.com/*",
-    "https://api-public.cs-prod.leetify.com/*"
+    "https://api-public.cs-prod.leetify.com/*",
+    "https://api.cs-prod.leetify.com/*"
   ],
   "background": {
     "service_worker": "background.js"
