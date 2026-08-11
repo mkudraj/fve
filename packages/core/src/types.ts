@@ -26,6 +26,18 @@ export interface MatchStats {
   deaths: number | null;
   assists: number | null;
   leetifyProfileUrl: string | null;
+  /** Average Leetify rating across analyzed matches. */
+  avgRating: number | null;
+  /** Rating change (latest rating - oldest rating). */
+  ratingSwing: number | null;
+  /** Performance summary for matches in the last 24 hours. */
+  last24h: Last24hPerformance | null;
+}
+
+export interface Last24hPerformance {
+  games: number;
+  label: string; // e.g. "consistent", "inconsistent", "no data"
+  detail: string; // e.g. "playing consistently across 7 games"
 }
 
 export type MatchStatsState =

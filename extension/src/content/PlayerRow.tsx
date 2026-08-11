@@ -93,13 +93,57 @@ export const PlayerRow: React.FC<PlayerRowProps> = ({
           (e.currentTarget as HTMLElement).style.background = "transparent";
       }}
     >
-      <span style={{ fontWeight: 500, display: "flex", alignItems: "center" }}>
+      <span style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
         {player.nickname ?? "?"}
         {player.steamName && player.steamName !== player.nickname && (
           <span style={{ color: "#888", marginLeft: 6, fontSize: 11 }}>
             ({player.steamName})
           </span>
         )}
+        {player.steamId64 && (
+          <a
+            href={`https://steamcommunity.com/profiles/${player.steamId64}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Steam profile"
+            style={{
+              color: "#5aa9e6",
+              textDecoration: "none",
+              fontSize: 10,
+              marginLeft: 4,
+              opacity: 0.7,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
+          >
+            Steam
+          </a>
+        )}
+        {(player.aim?.status === "available" && player.aim.profileUrl) || player.steamId64 ? (
+          <a
+            href={
+              player.aim?.status === "available" && player.aim.profileUrl
+                ? player.aim.profileUrl
+                : `https://leetify.com/app/profile/${player.steamId64}`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Leetify profile"
+            style={{
+              color: "#f0a500",
+              textDecoration: "none",
+              fontSize: 10,
+              marginLeft: 2,
+              opacity: 0.7,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
+          >
+            Leetify
+          </a>
+        ) : null}
         {renderAim(player.aim)}
       </span>
       <span style={{ color: "#e94560", fontSize: 12, fontWeight: 600 }}>
@@ -137,29 +181,67 @@ export const PlayerRow: React.FC<PlayerRowProps> = ({
         )}
         {player.matchStats?.status === "available" && (
           <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #333" }}>
-            <div>
+            <div style={{ color: "#888", marginBottom: 2 }}>
               Last {player.matchStats.stats.matchesAnalyzed} matches
-              {" · "}
-              {player.matchStats.stats.totalMatches} total
             </div>
-            {player.matchStats.stats.winRate != null && (
-              <div>
-                Win rate: <span style={{ color: "#ccc" }}>{(player.matchStats.stats.winRate * 100).toFixed(0)}%</span>
-              </div>
-            )}
-            {player.matchStats.stats.kdRatio != null && (
-              <div>
-                K/D: <span style={{ color: "#ccc" }}>{player.matchStats.stats.kdRatio.toFixed(2)}</span>
-                {" · "}K/R: <span style={{ color: "#ccc" }}>{player.matchStats.stats.killsPerRound?.toFixed(2)}</span>
-                {" · "}ADR: <span style={{ color: "#ccc" }}>{player.matchStats.stats.adr?.toFixed(1)}</span>
-              </div>
-            )}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {player.matchStats.stats.winRate != null && (
+                <span>
+                  <span style={{ color: "#888" }}>Win </span>
+                  <span style={{ color: "#ccc" }}>{(player.matchStats.stats.winRate * 100).toFixed(0)}%</span>
+                </span>
+              )}
+              {player.matchStats.stats.avgRating != null && (
+                <span>
+                  <span style={{ color: "#888" }}>Rating </span>
+                  <span style={{ color: "#ccc" }}>{player.matchStats.stats.avgRating.toFixed(2)}</span>
+                </span>
+              )}
+              {player.matchStats.stats.ratingSwing != null && (
+                <span>
+                  <span style={{ color: "#888" }}>Swing </span>
+                  <span style={{ color: player.matchStats.stats.ratingSwing >= 0 ? "#4caf50" : "#e94560" }}>
+                    {player.matchStats.stats.ratingSwing >= 0 ? "+" : ""}{player.matchStats.stats.ratingSwing.toFixed(2)}
+                  </span>
+                </span>
+              )}
+            </div>
             {player.matchStats.stats.kills != null && (
-              <div>
-                K/D/A:{" "}
+              <div style={{ marginTop: 2 }}>
+                <span style={{ color: "#888" }}>K/D/A </span>
                 <span style={{ color: "#ccc" }}>
                   {player.matchStats.stats.kills}/{player.matchStats.stats.deaths}/{player.matchStats.stats.assists}
                 </span>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 12 }}>
+              {player.matchStats.stats.kdRatio != null && (
+                <span>
+                  <span style={{ color: "#888" }}>K/D </span>
+                  <span style={{ color: "#ccc" }}>{player.matchStats.stats.kdRatio.toFixed(2)}</span>
+                </span>
+              )}
+              {player.matchStats.stats.killsPerRound != null && (
+                <span>
+                  <span style={{ color: "#888" }}>K/R </span>
+                  <span style={{ color: "#ccc" }}>{player.matchStats.stats.killsPerRound.toFixed(2)}</span>
+                </span>
+              )}
+              {player.matchStats.stats.adr != null && (
+                <span>
+                  <span style={{ color: "#888" }}>ADR </span>
+                  <span style={{ color: "#ccc" }}>{player.matchStats.stats.adr.toFixed(1)}</span>
+                </span>
+              )}
+            </div>
+            {player.matchStats.stats.last24h && (
+              <div style={{ marginTop: 3, fontSize: 10, color: "#f0a500" }}>
+                {player.matchStats.stats.last24h.label === "inconsistent"
+                  ? "⚠ "
+                  : player.matchStats.stats.last24h.label === "consistent"
+                    ? "✓ "
+                    : ""}
+                {player.matchStats.stats.last24h.detail}
               </div>
             )}
           </div>

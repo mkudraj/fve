@@ -27,6 +27,12 @@
     "default_popup": "popup.html",
     "default_title": "FACEIT Pre-Match Scout"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["profiles.html", "profiles.js"],
+      "matches": []
+    }
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

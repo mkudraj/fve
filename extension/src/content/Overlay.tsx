@@ -207,9 +207,26 @@ function renderContent(
                 borderTop: "1px solid #2a2a4a",
                 fontSize: 10,
                 color: "#555",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              Data Provided by Leetify
+              <span>Data Provided by Leetify</span>
+              <button
+                onClick={() => openProfilesPage(state)}
+                style={{
+                  background: "#0f3460",
+                  color: "#5aa9e6",
+                  border: "1px solid #2a2a4a",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 10,
+                }}
+              >
+                Open all profiles
+              </button>
             </div>
           </div>
         </div>
@@ -257,4 +274,17 @@ function renderContent(
     default:
       return null;
   }
+}
+
+/** Save roster data to storage and open the full profiles page in a new tab. */
+function openProfilesPage(state: Extract<MatchScoutState, { status: "ready" }>) {
+  const data = {
+    matchId: state.matchId,
+    matchStatus: state.matchStatus,
+    faction1: state.faction1,
+    faction2: state.faction2,
+  };
+  chrome.storage.local.set({ profilesData: data }, () => {
+    chrome.runtime.sendMessage({ type: "OPEN_PROFILES_PAGE" });
+  });
 }

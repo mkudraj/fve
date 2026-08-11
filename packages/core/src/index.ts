@@ -8,8 +8,10 @@ export {
   fetchLeetifyProfile,
   extractAimRating,
   classifyLeetifyError,
+  fetchRecentMatchStats,
 } from "./leetify-client.js";
 export type {
   LeetifyProfileResult,
   LeetifyKeyValidation,
+  RecentMatchStats,
 } from "./leetify-client.js";

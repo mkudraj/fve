@@ -127,7 +127,7 @@ async function onMatchDetected(matchId: string): Promise<void> {
     options.enableAimRating &&
     options.leetifyApiKey
   ) {
-    fetchAimRatings(state.matchId, options.leetifyApiKey, options.faceitApiKey);
+    fetchAimRatings(state.matchId, options.leetifyApiKey);
   }
 }
 
@@ -138,7 +138,6 @@ async function onMatchDetected(matchId: string): Promise<void> {
 async function fetchAimRatings(
   matchId: string,
   leetifyKey: string,
-  faceitKey: string,
 ): Promise<void> {
   const state = getState();
   if (state.status !== "ready") return;
@@ -150,7 +149,6 @@ async function fetchAimRatings(
   const timing = await loadAimRatings(
     allPlayers,
     leetifyKey,
-    faceitKey,
     (updatedPlayer) => {
       // Guard: only broadcast if still on the same match.
       const current = getState();
@@ -233,6 +231,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (msg.type === "GET_STATE") {
     sendResponse({ type: "STATE_CHANGED", state: getState() });
+    return false;
+  }
+  if (msg.type === "OPEN_PROFILES_PAGE") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("profiles.html") });
     return false;
   }
   return false;

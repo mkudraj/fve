@@ -5,7 +5,7 @@
  * with controlled concurrency. Updates the state progressively.
  */
 
-import { fetchLeetifyProfile, fetchPlayerStats } from "@fve/core";
+import { fetchLeetifyProfile, fetchRecentMatchStats } from "@fve/core";
 import type {
   FaceitPlayer,
   AimRatingState,
@@ -55,7 +55,6 @@ export async function loadAimRatings(
   /** All players from both factions (10 elements). */
   players: FaceitPlayer[],
   leetifyKey: string,
-  faceitKey: string,
   /** Called after each player's aim is resolved. Receives the updated player. */
   onUpdate: (player: FaceitPlayer) => void,
   /** Optional abort signal for cancelling the entire batch (new match). */
@@ -120,12 +119,13 @@ export async function loadAimRatings(
 
         onUpdate(player);
 
-        // Fetch FACEIT match stats for players with valid playerId.
-        if (player.playerId) {
+        // Fetch recent match stats from Leetify (last 20 FACEIT matches).
+        if (result.status === "success") {
           try {
-            const stats = await fetchPlayerStats(
-              player.playerId,
-              faceitKey,
+            const stats = await fetchRecentMatchStats(
+              player.steamId64,
+              leetifyKey,
+              20,
               TIMEOUT_MS,
               signal,
             );
@@ -133,16 +133,19 @@ export async function loadAimRatings(
               player.matchStats = {
                 status: "available",
                 stats: {
-                  matchesAnalyzed: stats.matches ?? 0,
-                  totalMatches: stats.matches ?? 0,
-                  winRate: stats.winRate !== null ? stats.winRate / 100 : null,
+                  matchesAnalyzed: stats.matchesAnalyzed,
+                  totalMatches: stats.totalMatches,
+                  winRate: stats.winRate,
                   kdRatio: stats.kdRatio,
-                  killsPerRound: stats.krRatio,
+                  killsPerRound: stats.killsPerRound,
                   adr: stats.adr,
-                  kills: stats.avgKills,
-                  deaths: stats.avgDeaths,
-                  assists: stats.avgAssists,
+                  kills: stats.kills,
+                  deaths: stats.deaths,
+                  assists: stats.assists,
                   leetifyProfileUrl: null,
+                  avgRating: stats.avgRating,
+                  ratingSwing: stats.ratingSwing,
+                  last24h: stats.last24h,
                 },
               };
             } else {

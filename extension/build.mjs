@@ -88,10 +88,20 @@ async function build() {
   });
   console.log("  options.js");
 
+  // ---- Profiles page (with React) ----
+  await esbuild.build({
+    ...sharedConfig,
+    entryPoints: [resolve(src, "profiles", "ProfilesPage.tsx")],
+    outfile: resolve(dist, "profiles.js"),
+    plugins: [corePlugin],
+  });
+  console.log("  profiles.js");
+
   // ---- Copy static assets ----
   cpSync(resolve(pub, "manifest.json"), resolve(dist, "manifest.json"));
   cpSync(resolve(pub, "popup.html"), resolve(dist, "popup.html"));
   cpSync(resolve(pub, "options.html"), resolve(dist, "options.html"));
+  cpSync(resolve(pub, "profiles.html"), resolve(dist, "profiles.html"));
 
   // Copy CSS
   const cssSrc = resolve(src, "content", "overlay.css");
