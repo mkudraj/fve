@@ -1,26 +1,45 @@
 /**
- * Main overlay component.
- *
- * Displays both teams' rosters in a draggable, collapsible panel
- * positioned over the FACEIT ready-check modal.
+ * Floating overlay (fallback when the accept modal isn't present, e.g. on the
+ * matchroom page). Draggable, collapsible panel showing the compact RosterTable.
  */
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import type { MatchScoutState } from "@fve/core";
-import { TeamSection } from "./TeamSection.js";
+import { RosterTable } from "./RosterTable.js";
+import type { OverlayPosition } from "./positioning.js";
 
 interface OverlayProps {
   state: MatchScoutState;
   onDismiss: () => void;
+  /** Controlled panel position (content script keeps it docked under Accept). */
+  position: OverlayPosition;
+  onPositionChange: (position: OverlayPosition) => void;
 }
 
-export const Overlay: React.FC<OverlayProps> = ({ state, onDismiss }) => {
+export const Overlay: React.FC<OverlayProps> = ({
+  state,
+  onDismiss,
+  position,
+  onPositionChange,
+}) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-  const [pos, setPos] = useState({ x: 20, y: 100 });
+  // Local position so dragging stays smooth; the content script re-anchors
+  // the panel below the check-in button until the user grabs it.
+  const [pos, setPos] = useState<{ x: number; y: number }>(position);
+  const [panelHeight, setPanelHeight] = useState(0);
   const dragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Follow the docked position pushed from the content script (unless dragging).
+  useEffect(() => {
+    if (!dragging.current) setPos(position);
+  }, [position]);
+
+  // Measure the real panel height so we can keep it fully on screen.
+  useLayoutEffect(() => {
+    if (panelRef.current) setPanelHeight(panelRef.current.offsetHeight);
+  }, [state, collapsed]);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -29,9 +48,11 @@ export const Overlay: React.FC<OverlayProps> = ({ state, onDismiss }) => {
         x: e.clientX - pos.x,
         y: e.clientY - pos.y,
       };
+      // Mark the position as user-controlled so the content script stops docking.
+      onPositionChange({ x: pos.x, y: pos.y });
       e.preventDefault();
     },
-    [pos],
+    [pos, onPositionChange],
   );
 
   useEffect(() => {
@@ -55,12 +76,20 @@ export const Overlay: React.FC<OverlayProps> = ({ state, onDismiss }) => {
 
   if (state.status === "idle") return null;
 
+  // Keep the panel fully on screen once its real height is known.
+  const height = panelHeight > 0 ? panelHeight : 480;
+  const maxTop = Math.max(8, window.innerHeight - height - 8);
+  const top = Math.min(Math.max(8, pos.y), maxTop);
+
   const panelStyle: React.CSSProperties = {
     position: "fixed",
-    left: pos.x,
-    top: pos.y,
+    left: Math.min(Math.max(8, pos.x), Math.max(8, window.innerWidth - 460 - 8)),
+    top,
     zIndex: 2147483647,
-    width: collapsed ? "auto" : 320,
+    // Never let the panel extend past the viewport - scroll internally if needed.
+    maxHeight: "calc(100vh - 16px)",
+    overflowY: "auto",
+    width: collapsed ? "auto" : 460,
     background: "rgba(22, 33, 62, 0.97)",
     border: "1px solid #e94560",
     borderRadius: 8,
@@ -126,18 +155,14 @@ export const Overlay: React.FC<OverlayProps> = ({ state, onDismiss }) => {
 
       {!collapsed && (
         <div style={{ padding: "8px 12px" }}>
-          {renderContent(state, expandedPlayer, setExpandedPlayer)}
+          {renderContent(state)}
         </div>
       )}
     </div>
   );
 };
 
-function renderContent(
-  state: MatchScoutState,
-  expandedPlayer: string | null,
-  setExpandedPlayer: (id: string | null) => void,
-): React.ReactNode {
+function renderContent(state: MatchScoutState): React.ReactNode {
   switch (state.status) {
     case "match-detected":
       return (
@@ -162,48 +187,28 @@ function renderContent(
       );
 
     case "ready":
+    case "partial":
       return (
         <div>
-          <TeamSection
-            name="TEAM 1"
-            players={state.faction1}
-            expandedPlayer={expandedPlayer}
-            onToggleExpand={setExpandedPlayer}
-          />
-          <TeamSection
-            name="TEAM 2"
-            players={state.faction2}
-            expandedPlayer={expandedPlayer}
-            onToggleExpand={setExpandedPlayer}
-          />
-          <div
-            style={{
-              marginTop: 8,
-              paddingTop: 8,
-              borderTop: "1px solid #2a2a4a",
-              fontSize: 11,
-              color: "#888",
-            }}
-          >
-            <div>Match status: {state.matchStatus}</div>
-            <div>Match ID: {state.matchId}</div>
-            <div>Roster loaded in: {state.loadedAt - state.detectedAt} ms</div>
-            {state.aimTiming && state.aimTiming.firstAimLoadedAt != null && (
-              <>
-                <div>
-                  First Aim loaded:{" "}
-                  {state.aimTiming.firstAimLoadedAt - state.aimTiming.requestsStartedAt} ms
-                </div>
-                <div>
-                  Aim available: {state.aimTiming.availableAimCount}
-                  /{state.aimTiming.availableAimCount + state.aimTiming.unavailableAimCount + state.aimTiming.errorAimCount}
-                </div>
-              </>
-            )}
+          <RosterTable state={state} />
+          {state.status === "partial" && (
             <div
               style={{
-                marginTop: 4,
-                paddingTop: 4,
+                marginTop: 8,
+                paddingTop: 8,
+                borderTop: "1px solid #2a2a4a",
+                fontSize: 11,
+                color: "#e94560",
+              }}
+            >
+              {state.message}
+            </div>
+          )}
+          {state.status === "ready" && (
+            <div
+              style={{
+                marginTop: 8,
+                paddingTop: 8,
                 borderTop: "1px solid #2a2a4a",
                 fontSize: 10,
                 color: "#555",
@@ -212,7 +217,7 @@ function renderContent(
                 alignItems: "center",
               }}
             >
-              <span>Data Provided by Leetify</span>
+              <span>Match: {state.matchStatus} · Data by Leetify</span>
               <button
                 onClick={() => openProfilesPage(state)}
                 style={{
@@ -228,36 +233,7 @@ function renderContent(
                 Open all profiles
               </button>
             </div>
-          </div>
-        </div>
-      );
-
-    case "partial":
-      return (
-        <div>
-          <TeamSection
-            name="TEAM 1"
-            players={state.faction1}
-            expandedPlayer={expandedPlayer}
-            onToggleExpand={setExpandedPlayer}
-          />
-          <TeamSection
-            name="TEAM 2"
-            players={state.faction2}
-            expandedPlayer={expandedPlayer}
-            onToggleExpand={setExpandedPlayer}
-          />
-          <div
-            style={{
-              marginTop: 8,
-              paddingTop: 8,
-              borderTop: "1px solid #2a2a4a",
-              fontSize: 11,
-              color: "#e94560",
-            }}
-          >
-            {state.message}
-          </div>
+          )}
         </div>
       );
 
@@ -277,10 +253,10 @@ function renderContent(
 }
 
 /** Save roster data to storage and open the full profiles page in a new tab. */
-function openProfilesPage(state: Extract<MatchScoutState, { status: "ready" }>) {
+function openProfilesPage(state: Extract<MatchScoutState, { status: "ready" | "partial" }>) {
   const data = {
     matchId: state.matchId,
-    matchStatus: state.matchStatus,
+    matchStatus: state.status === "ready" ? state.matchStatus : "PARTIAL",
     faction1: state.faction1,
     faction2: state.faction2,
   };
