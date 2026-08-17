@@ -1,11 +1,13 @@
 /**
  * Leetify background loader.
  *
- * Fetches Aim Ratings + Match Stats for all players in a roster
- * with controlled concurrency. Updates the state progressively.
+ * Fetches Aim Ratings for all players in a roster (Leetify is used ONLY for
+ * the Aim Rating - match stats come from FACEIT and are loaded same-origin by
+ * the content script, see stats-loader.ts).
+ * Updates the state progressively.
  */
 
-import { fetchLeetifyProfile, fetchRecentMatchStats } from "@fve/core";
+import { fetchLeetifyProfile } from "@fve/core";
 import type {
   FaceitPlayer,
   AimRatingState,
@@ -117,44 +119,6 @@ export async function loadAimRatings(
         }
 
         onUpdate(player);
-
-        // Fetch recent match stats from Leetify (last 20 FACEIT matches).
-        if (result.status === "success") {
-          try {
-            const stats = await fetchRecentMatchStats(
-              player.steamId64,
-              undefined,
-              20,
-              TIMEOUT_MS,
-              signal,
-            );
-            if (stats) {
-              player.matchStats = {
-                status: "available",
-                stats: {
-                  matchesAnalyzed: stats.matchesAnalyzed,
-                  totalMatches: stats.totalMatches,
-                  winRate: stats.winRate,
-                  kdRatio: stats.kdRatio,
-                  killsPerRound: stats.killsPerRound,
-                  adr: stats.adr,
-                  kills: stats.kills,
-                  deaths: stats.deaths,
-                  assists: stats.assists,
-                  leetifyProfileUrl: null,
-                  avgRating: stats.avgRating,
-                  ratingSwing: stats.ratingSwing,
-                  last24h: stats.last24h,
-                },
-              };
-            } else {
-              player.matchStats = { status: "unavailable" };
-            }
-          } catch {
-            player.matchStats = { status: "unavailable" };
-          }
-          onUpdate(player);
-        }
       } catch {
         player.aim = {
           status: "error",

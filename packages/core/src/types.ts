@@ -14,30 +14,26 @@ export interface FaceitPlayer {
   matchStats?: MatchStatsState;
 }
 
-/** Aggregated stats from recent Leetify matches. */
+/**
+ * Aggregated player match stats - sourced from FACEIT's own stats API
+ * (same data the FACEIT roster widget shows: Overall Matches + Last 20 Matches).
+ * Leetify is used ONLY for the Aim Rating.
+ */
 export interface MatchStats {
+  /** Number of 5v5 matches analyzed (last 20 window). */
   matchesAnalyzed: number;
+  /** Overall lifetime matches count. */
   totalMatches: number;
+  /** Win rate over the analyzed matches (0..1). */
   winRate: number | null;
+  /** Average K/D ratio. */
   kdRatio: number | null;
+  /** Average K/R ratio. */
   killsPerRound: number | null;
+  /** Average ADR (damage per round). */
   adr: number | null;
-  kills: number | null;
-  deaths: number | null;
-  assists: number | null;
-  leetifyProfileUrl: string | null;
-  /** Average Leetify rating across analyzed matches. */
-  avgRating: number | null;
-  /** Rating change (latest rating - oldest rating). */
-  ratingSwing: number | null;
-  /** Performance summary for matches in the last 24 hours. */
-  last24h: Last24hPerformance | null;
-}
-
-export interface Last24hPerformance {
-  games: number;
-  label: string; // e.g. "consistent", "inconsistent", "no data"
-  detail: string; // e.g. "playing consistently across 7 games"
+  /** Average Headshot %. */
+  headshotRate: number | null;
 }
 
 export type MatchStatsState =

@@ -66,14 +66,10 @@ const ProfilesPage: React.FC = () => {
               <span style={styles.colPlayer}>Player</span>
               <span style={styles.colStat}>Lvl</span>
               <span style={styles.colStat}>Aim</span>
+              <span style={styles.colStat}>Games</span>
               <span style={styles.colStat}>Win%</span>
-              <span style={styles.colStat}>Rating</span>
-              <span style={styles.colStat}>Swing</span>
-              <span style={styles.colStat}>K/D/A</span>
-              <span style={styles.colStat}>K/D</span>
-              <span style={styles.colStat}>K/R</span>
-              <span style={styles.colStat}>ADR</span>
-              <span style={styles.colStat}>24h</span>
+              <span style={styles.colStat}>ADR/HS</span>
+              <span style={styles.colStat}>K/D/K/R</span>
               <span style={styles.colLink}>Profiles</span>
             </div>
             {team.players.map((p) => {
@@ -102,21 +98,17 @@ const ProfilesPage: React.FC = () => {
                   <span style={{...styles.colStat, color: aimVal != null ? "#4caf50" : p.aim?.status === "loading" ? "#666" : "#888"}}>
                     {aimLabel}
                   </span>
+                  <span style={styles.colStat}>{ms?.totalMatches != null ? ms.totalMatches : "—"}</span>
                   <span style={styles.colStat}>{ms?.winRate != null ? `${(ms.winRate * 100).toFixed(0)}%` : "—"}</span>
-                  <span style={styles.colStat}>{ms?.avgRating != null ? ms.avgRating.toFixed(2) : "—"}</span>
-                  <span style={{...styles.colStat, color: ms?.ratingSwing != null ? (ms.ratingSwing >= 0 ? "#4caf50" : "#e94560") : "#888"}}>
-                    {ms?.ratingSwing != null ? `${ms.ratingSwing >= 0 ? "+" : ""}${ms.ratingSwing.toFixed(2)}` : "—"}
-                  </span>
-                  <span style={styles.colStat}>{ms?.kills != null ? `${ms.kills}/${ms.deaths}/${ms.assists}` : "—"}</span>
-                  <span style={styles.colStat}>{ms?.kdRatio != null ? ms.kdRatio.toFixed(2) : "—"}</span>
-                  <span style={styles.colStat}>{ms?.killsPerRound != null ? ms.killsPerRound.toFixed(2) : "—"}</span>
-                  <span style={styles.colStat}>{ms?.adr != null ? ms.adr.toFixed(1) : "—"}</span>
                   <span style={styles.colStat}>
-                    {ms?.last24h ? (
-                      <span style={{ color: ms.last24h.label === "inconsistent" ? "#f0a500" : "#4caf50", fontSize: 10 }}>
-                        {ms.last24h.label === "inconsistent" ? "⚠" : "✓"} {ms.last24h.games}g
-                      </span>
-                    ) : "—"}
+                    {ms?.adr != null || ms?.headshotRate != null
+                      ? `${ms.adr != null ? ms.adr.toFixed(1) : "—"} / ${ms.headshotRate != null ? `${Math.round(ms.headshotRate)}%` : "—"}`
+                      : "—"}
+                  </span>
+                  <span style={styles.colStat}>
+                    {ms?.kdRatio != null || ms?.killsPerRound != null
+                      ? `${ms.kdRatio != null ? ms.kdRatio.toFixed(2) : "—"} / ${ms.killsPerRound != null ? ms.killsPerRound.toFixed(2) : "—"}`
+                      : "—"}
                   </span>
                   <span style={styles.colLink}>
                     {p.steamId64 && (
