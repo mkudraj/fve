@@ -79,7 +79,7 @@ cd fve
 # 2. Install & test core package
 cd packages/core
 npm install
-npm test          # should show 46/46 pass
+npm test          # should show 54/54 pass
 cd ../..
 
 # 3. Install & build extension
