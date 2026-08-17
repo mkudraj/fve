@@ -97,11 +97,39 @@ async function build() {
   });
   console.log("  profiles.js");
 
+  // ---- Preview page (with React) ----
+  await esbuild.build({
+    ...sharedConfig,
+    entryPoints: [resolve(src, "preview", "Preview.tsx")],
+    outfile: resolve(dist, "preview.js"),
+    plugins: [corePlugin],
+  });
+  console.log("  preview.js");
+
+  // ---- Overlay-only preview (runs on the embedded real FACEIT page) ----
+  await esbuild.build({
+    ...sharedConfig,
+    entryPoints: [resolve(src, "preview", "PreviewOverlay.tsx")],
+    outfile: resolve(dist, "preview-overlay.js"),
+    plugins: [corePlugin],
+  });
+  console.log("  preview-overlay.js");
+
   // ---- Copy static assets ----
   cpSync(resolve(pub, "manifest.json"), resolve(dist, "manifest.json"));
   cpSync(resolve(pub, "popup.html"), resolve(dist, "popup.html"));
   cpSync(resolve(pub, "options.html"), resolve(dist, "options.html"));
   cpSync(resolve(pub, "profiles.html"), resolve(dist, "profiles.html"));
+  cpSync(resolve(pub, "preview.html"), resolve(dist, "preview.html"));
+  // 1:1 preview - the real FACEIT accept screen (self-contained snapshot).
+  if (existsSync(resolve(pub, "faceit-match.html"))) {
+    cpSync(resolve(pub, "faceit-match.html"), resolve(dist, "faceit-match.html"));
+    // Optional companion assets folder (some snapshots inline everything).
+    if (existsSync(resolve(pub, "faceit-match_files"))) {
+      cpSync(resolve(pub, "faceit-match_files"), resolve(dist, "faceit-match_files"), { recursive: true });
+    }
+    console.log("  faceit-match.html");
+  }
 
   // Copy CSS
   const cssSrc = resolve(src, "content", "overlay.css");

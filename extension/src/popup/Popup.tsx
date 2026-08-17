@@ -46,43 +46,10 @@ const Popup: React.FC = () => {
     chrome.runtime.openOptionsPage();
   };
 
-  const handlePreview = async () => {
-    const mockState: MatchScoutState = {
-      status: "ready",
-      matchId: "1-ed06863c-ee54-4fe1-9278-475d72991017",
-      detectedAt: Date.now() - 500,
-      loadedAt: Date.now(),
-      matchStatus: "CHECK_IN",
-      faction1: [
-        { nickname: "GR1NA", playerId: "p1", steamId64: "76561198249664530", steamName: "Gringo", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA", aim: { status: "available", value: 81 }, matchStats: { status: "available", stats: { matchesAnalyzed: 20, totalMatches: 4314, winRate: 0.43, kdRatio: 0.91, killsPerRound: 0.67, adr: 73.0, kills: 14, deaths: 16, assists: 4, leetifyProfileUrl: null, avgRating: 1.02, ratingSwing: -0.0162, last24h: { games: 7, label: "inconsistent", detail: "performing inconsistently across 7 games" } } } },
-        { nickname: "siNCo-", playerId: "p2", steamId64: "76561198119694078", steamName: "siNCo", level: 10, membership: "free", anticheatRequired: true, team: "team_GR1NA", aim: { status: "available", value: 74 } },
-        { nickname: "-AthE", playerId: "p3", steamId64: "76561198838634986", steamName: "AthE", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA", aim: { status: "unavailable", reason: "private" } },
-        { nickname: "-T0KI", playerId: "p4", steamId64: "76561198838474668", steamName: "T0KI", level: 10, membership: "free", anticheatRequired: true, team: "team_GR1NA", aim: { status: "available", value: 68 } },
-        { nickname: "Ceo---", playerId: "p5", steamId64: "76561198362845213", steamName: "Ceo", level: 10, membership: "premium", anticheatRequired: true, team: "team_GR1NA", aim: { status: "loading" } },
-      ],
-      faction2: [
-        { nickname: "108-", playerId: "p6", steamId64: "76561198782132866", steamName: "108", level: 10, membership: "free", anticheatRequired: true, team: "team_108-", aim: { status: "available", value: 55 } },
-        { nickname: "shorstky", playerId: "p7", steamId64: "76561198070756713", steamName: "shorstky", level: 10, membership: "premium", anticheatRequired: true, team: "team_108-", aim: { status: "available", value: 90 } },
-        { nickname: "tumi", playerId: "p8", steamId64: "76561198035293177", steamName: "tumi", level: 10, membership: "free", anticheatRequired: true, team: "team_108-", aim: { status: "unavailable", reason: "not-registered" } },
-        { nickname: "shadyb", playerId: "p9", steamId64: "76561198080436813", steamName: "shadyb", level: 10, membership: "premium", anticheatRequired: true, team: "team_108-", aim: { status: "available", value: 63 } },
-        { nickname: "AHLIN-", playerId: "p10", steamId64: "76561198108255427", steamName: "AHLIN", level: 10, membership: "free", anticheatRequired: true, team: "team_108-", aim: { status: "error", message: "Network timeout" } },
-      ],
-      aimTiming: {
-        requestsStartedAt: Date.now() - 500,
-        firstAimLoadedAt: Date.now() - 200,
-        allAimRequestsFinishedAt: Date.now(),
-        availableAimCount: 6,
-        unavailableAimCount: 2,
-        errorAimCount: 1,
-      },
-    };
-
-    const tabs = await chrome.tabs.query({ url: "https://www.faceit.com/*" });
-    for (const tab of tabs) {
-      if (tab.id) {
-        chrome.tabs.sendMessage(tab.id, { type: "STATE_CHANGED", state: mockState }).catch(() => {});
-      }
-    }
+  const handlePreview = () => {
+    // Open the 1:1 preview - the real FACEIT matchroom page with the scout
+    // overlay docked below the check-in button (no FACEIT login needed).
+    chrome.tabs.create({ url: chrome.runtime.getURL("faceit-match.html") });
   };
 
   if (!data) {
